@@ -1511,7 +1511,7 @@ class Query:
                 # which is executed as a wrapped subquery if any of the
                 # aggregate() elements reference an existing annotation. In
                 # that case we need to return a Ref to the subquery's annotation.
-                return Ref(name, self.annotations[name])
+                return Ref(name, self.annotation_select[name])
             else:
                 return self.annotations[name]
         else:

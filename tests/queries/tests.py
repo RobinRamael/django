@@ -6,7 +6,7 @@ from operator import attrgetter
 
 from django.core.exceptions import EmptyResultSet, FieldError
 from django.db import DEFAULT_DB_ALIAS, connection
-from django.db.models import Count, F, Q
+from django.db.models import Count, F, Q, Sum, Value
 from django.db.models.sql.constants import LOUTER
 from django.db.models.sql.where import NothingNode, WhereNode
 from django.test import TestCase, skipUnlessDBFeature
@@ -15,17 +15,17 @@ from django.test.utils import CaptureQueriesContext
 from .models import (
     FK1, Annotation, Article, Author, BaseA, Book, CategoryItem,
     CategoryRelationship, Celebrity, Channel, Chapter, Child, ChildObjectA,
-    Classroom, Company, Cover, CustomPk, CustomPkTag, Detail, DumbCategory,
-    Eaten, Employment, ExtraInfo, Fan, Food, Identifier, Individual, Item, Job,
-    JobResponsibilities, Join, LeafA, LeafB, LoopX, LoopZ, ManagedModel,
-    Member, ModelA, ModelB, ModelC, ModelD, MyObject, NamedCategory, Node,
-    Note, NullableName, Number, ObjectA, ObjectB, ObjectC, OneToOneCategory,
-    Order, OrderItem, Page, Paragraph, Person, Plaything, PointerA, Program,
-    ProxyCategory, ProxyObjectA, ProxyObjectB, Ranking, Related,
-    RelatedIndividual, RelatedObject, Report, ReportComment, ReservedName,
-    Responsibility, School, SharedConnection, SimpleCategory, SingleObject,
-    SpecialCategory, Staff, StaffUser, Student, Tag, Task, Teacher,
-    Ticket21203Child, Ticket21203Parent, Ticket23605A, Ticket23605B,
+    Classroom, Company, Cover, CustomPk, CustomPkTag, Data, Detail,
+    DumbCategory, Eaten, Employment, ExtraInfo, Fan, Food, Identifier,
+    Individual, Item, Job, JobResponsibilities, Join, LeafA, LeafB, LoopX,
+    LoopZ, ManagedModel, Member, ModelA, ModelB, ModelC, ModelD, MyObject,
+    NamedCategory, Node, Note, NullableName, Number, ObjectA, ObjectB, ObjectC,
+    OneToOneCategory, Order, OrderItem, Page, Paragraph, Person, Plaything,
+    PointerA, Program, ProxyCategory, ProxyObjectA, ProxyObjectB, Ranking,
+    Related, RelatedIndividual, RelatedObject, Report, ReportComment,
+    ReservedName, Responsibility, School, SharedConnection, SimpleCategory,
+    SingleObject, SpecialCategory, Staff, StaffUser, Student, Tag, Task,
+    Teacher, Ticket21203Child, Ticket21203Parent, Ticket23605A, Ticket23605B,
     Ticket23605C, TvChef, Valid, X,
 )
 
@@ -3863,3 +3863,27 @@ class Ticket23622Tests(TestCase):
             set(Ticket23605A.objects.filter(qy).values_list('pk', flat=True))
         )
         self.assertSequenceEqual(Ticket23605A.objects.filter(qx), [a2])
+
+
+class Ticket28811Tests(TestCase):
+
+    def test_simple(self):
+
+        Data.objects.create(option='A', value=1)
+        Data.objects.create(option='A', value=2)
+
+        Data.objects.create(option='B', value=3)
+        Data.objects.create(option='B', value=4)
+
+        data_qs = (Data.objects
+                   .annotate(multiplier=Value(3))   # will of course be far more complex in the wild
+                   # group by option => sum of value * multiplier
+                   .values('option')
+                   .annotate(multiplied_value_sum=Sum(F('multiplier') * F('value')))
+                   .order_by())
+
+        self.assertCountEqual(
+            data_qs,
+            [{'option': 'A', 'multiplied_value_sum': (2 + 1) * 3},
+             {'option': 'B', 'multiplied_value_sum': (3 + 4) * 3}],
+        )
