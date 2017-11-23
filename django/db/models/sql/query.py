@@ -1511,9 +1511,9 @@ class Query:
                 # which is executed as a wrapped subquery if any of the
                 # aggregate() elements reference an existing annotation. In
                 # that case we need to return a Ref to the subquery's annotation.
-                return Ref(name, self.annotation_select[name])
+                return Ref(name, self.annotations[name])
             else:
-                return self.annotation_select[name]
+                return self.annotations[name]
         else:
             field_list = name.split(LOOKUP_SEP)
             join_info = self.setup_joins(field_list, self.get_meta(), self.get_initial_alias(), can_reuse=reuse)
