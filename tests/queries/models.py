@@ -704,3 +704,8 @@ class RelatedIndividual(models.Model):
 
     class Meta:
         db_table = 'RelatedIndividual'
+
+
+class Data(models.Model):
+    option = models.CharField(max_length=2)
+    value = models.IntegerField()

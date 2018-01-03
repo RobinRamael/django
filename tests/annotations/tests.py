@@ -535,3 +535,27 @@ class NonAggregateAnnotationTestCase(TestCase):
             Book.objects.annotate(is_book=True)
         with self.assertRaisesMessage(TypeError, msg % ', '.join([str(BooleanField()), 'True'])):
             Book.objects.annotate(BooleanField(), Value(False), is_book=True)
+
+
+class Ticket28811Tests(TestCase):
+
+    def test_simple(self):
+
+        Publisher.objects.create(name='A', num_awards=1)
+        Publisher.objects.create(name='A', num_awards=2)
+
+        Publisher.objects.create(name='B', num_awards=3)
+        Publisher.objects.create(name='B', num_awards=4)
+
+        data_qs = (Publisher.objects
+                   .annotate(multiplier=Value(3))
+                   # group by option => sum of value * multiplier
+                   .values('name')
+                   .annotate(multiplied_value_sum=Sum(F('multiplier') * F('num_awards')))
+                   .order_by())
+
+        self.assertCountEqual(
+            data_qs,
+            [{'name': 'A', 'multiplied_value_sum': (2 + 1) * 3},
+             {'name': 'B', 'multiplied_value_sum': (3 + 4) * 3}],
+        )
